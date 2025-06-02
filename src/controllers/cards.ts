@@ -3,6 +3,7 @@ import Card from '../models/card';
 import { RequestWithUser } from '../types/RequestWithUser';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../errors';
 import { CustomError, ValidationError } from '../types/errors';
+import { STATUS_CODES } from '../utils/constants';
 
 export const getCards = async (
   req: Request,
@@ -13,7 +14,7 @@ export const getCards = async (
     const cards = await Card.find({})
       .populate('owner', 'name about avatar _id')
       .populate('likes', '_id');
-    res.status(200).send(cards);
+    res.status(STATUS_CODES.OK).send(cards);
   } catch (err) {
     next(err as CustomError);
   }
@@ -32,7 +33,7 @@ export const createCard = async (
       .populate('owner', 'name about avatar _id')
       .populate('likes', '_id')
       .select('-__v');
-    res.status(201).send(populatedCard);
+    res.status(STATUS_CODES.CREATED).send(populatedCard);
   } catch (error) {
     if ((error as ValidationError).name === 'ValidationError') {
       next(new BadRequestError('Переданы некорректные данные для создания карточки'));
@@ -62,7 +63,7 @@ export const deleteCard = async (
     }
 
     await card.deleteOne();
-    res.send({ message: 'Карточка удалена' });
+    res.status(STATUS_CODES.OK).send({ message: 'Карточка удалена' });
   } catch (error) {
     next(error as CustomError);
   }
@@ -90,7 +91,7 @@ export const likeCard = async (
       return;
     }
 
-    res.send(card);
+    res.status(STATUS_CODES.OK).send(card);
   } catch (err) {
     next(err as CustomError);
   }
@@ -118,7 +119,7 @@ export const dislikeCard = async (
       return;
     }
 
-    res.send(card);
+    res.status(STATUS_CODES.OK).send(card);
   } catch (err) {
     next(err as CustomError);
   }

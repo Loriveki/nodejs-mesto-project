@@ -1,13 +1,13 @@
 import jwt from 'jsonwebtoken';
-import { config } from 'dotenv';
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
+import { Types } from 'mongoose';
 import User from '../models/user';
 import { RequestWithUser } from '../types/RequestWithUser';
 import { BadRequestError, NotFoundError, UnauthorizedError } from '../errors';
 import { CustomError, ValidationError } from '../types/errors';
-
-config();
+import appConfig from '../config';
+import { STATUS_CODES } from '../utils/constants';
 
 export const getUsers = async (
   req: Request,
@@ -16,7 +16,7 @@ export const getUsers = async (
 ) => {
   try {
     const users = await User.find({}).select('-__v');
-    res.send(users);
+    res.status(STATUS_CODES.OK).send(users);
   } catch (error) {
     next(error as CustomError);
   }
@@ -33,7 +33,7 @@ export const getUserById = async (
     if (!user) {
       throw new NotFoundError('Пользователь не найден');
     }
-    res.send(user);
+    res.status(STATUS_CODES.OK).send(user);
   } catch (error) {
     next(error as CustomError);
   }
@@ -58,7 +58,7 @@ export const createUser = async (
     });
     await user.save();
     const savedUser = await User.findById(user._id).select('-__v -password');
-    res.status(201).send(savedUser);
+    res.status(STATUS_CODES.CREATED).send(savedUser);
   } catch (error) {
     if ((error as ValidationError).name === 'ValidationError') {
       next(new BadRequestError('Переданы некорректные данные для создания пользователя'));
@@ -83,7 +83,7 @@ export const updateProfile = async (
     if (!updatedUser) {
       throw new NotFoundError('Пользователь не найден');
     }
-    res.send(updatedUser);
+    res.status(STATUS_CODES.OK).send(updatedUser);
   } catch (error) {
     if ((error as ValidationError).name === 'ValidationError') {
       next(new BadRequestError('Переданы некорректные данные для обновления профиля'));
@@ -108,7 +108,7 @@ export const updateAvatar = async (
     if (!updatedUser) {
       throw new NotFoundError('Пользователь не найден');
     }
-    res.send(updatedUser);
+    res.status(STATUS_CODES.OK).send(updatedUser);
   } catch (error) {
     if ((error as ValidationError).name === 'ValidationError') {
       next(new BadRequestError('Переданы некорректные данные для обновления аватара'));
@@ -124,14 +124,22 @@ export const login = async (
 ) => {
   try {
     const { email, password } = req.body;
+
     const user = await User.findOne({ email }).select('+password');
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+
+    if (!user) {
+      throw new UnauthorizedError('Неверные почта или пароль');
+    }
+
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordMatch) {
       throw new UnauthorizedError('Неверные почта или пароль');
     }
 
     const token = jwt.sign(
-      { _id: user._id.toString() },
-      process.env.JWT_SECRET as string,
+      { _id: (user._id as Types.ObjectId).toString() },
+      appConfig.jwtSecret,
       { expiresIn: '7d' },
     );
 
@@ -141,7 +149,7 @@ export const login = async (
       sameSite: 'strict',
     });
 
-    res.send({ message: 'Успешный вход' });
+    res.status(STATUS_CODES.OK).send({ message: 'Успешный вход' });
   } catch (error) {
     next(error as CustomError);
   }
@@ -158,7 +166,7 @@ export const getCurrentUser = async (
     if (!user) {
       throw new NotFoundError('Пользователь не найден');
     }
-    res.send(user);
+    res.status(STATUS_CODES.OK).send(user);
   } catch (error) {
     next(error as CustomError);
   }

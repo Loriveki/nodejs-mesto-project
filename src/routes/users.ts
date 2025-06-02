@@ -32,7 +32,7 @@ router.patch(
   '/me/avatar',
   celebrate({
     [Segments.BODY]: Joi.object().keys({
-      avatar: Joi.string().required(),
+      avatar: Joi.string().uri().required(),
     }),
   }),
   updateAvatar,

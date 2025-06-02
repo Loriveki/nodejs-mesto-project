@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { CustomError } from '../types/errors';
 import { errorLogger } from './logger';
+import { STATUS_CODES } from '../utils/constants';
 
 const errorHandler = (
   err: CustomError & { code?: number; name?: string },
@@ -11,17 +12,17 @@ const errorHandler = (
   errorLogger(err, req, res, () => {});
 
   if (err.code === 11000) {
-    res.status(409).send({ message: 'Пользователь с таким email уже существует' });
+    res.status(STATUS_CODES.CONFLICT).send({ message: 'Пользователь с таким email уже существует' });
     return;
   }
 
   if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-    res.status(401).send({ message: 'Некорректный токен' });
+    res.status(STATUS_CODES.UNAUTHORIZED).send({ message: 'Некорректный токен' });
     return;
   }
 
-  const status = err.status || 500;
-  const message = status === 500 ? 'На сервере произошла ошибка' : err.message;
+  const status = err.status || STATUS_CODES.INTERNAL_SERVER_ERROR;
+  const message = status === STATUS_CODES.INTERNAL_SERVER_ERROR ? 'На сервере произошла ошибка' : err.message;
 
   res.status(status).send({ message });
 };

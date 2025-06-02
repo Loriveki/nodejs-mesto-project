@@ -1,5 +1,4 @@
 import express, { Request, Response, ErrorRequestHandler } from 'express';
-import { config } from 'dotenv';
 import mongoose from 'mongoose';
 import { isCelebrateError } from 'celebrate';
 import userRouter from './routes/users';
@@ -15,11 +14,10 @@ import {
 } from './middlewares/logger';
 import validateLogin from './middlewares/validateLogin';
 import validateSignup from './middlewares/validateSignup';
-
-config();
+import appConfig from './config';
+import { STATUS_CODES } from './utils/constants';
 
 const app = express();
-const { PORT = 3000 } = process.env;
 
 // Настройка Mongoose
 mongoose.set('strictQuery', true);
@@ -40,7 +38,7 @@ app.use('/cards', auth, cardsRouter);
 
 // Маршрут для корня
 app.get('/', (req: Request, res: Response) => {
-  res.send('Mesto API!');
+  res.status(STATUS_CODES.OK).send('Hello, Mesto API!');
 });
 
 // Логирование ошибок
@@ -70,7 +68,7 @@ const celebrateErrorHandler: ErrorRequestHandler = (
       } else if (errorDetails.message.includes('password')) {
         message = 'Пароль обязателен';
       }
-      res.status(400).send({ message });
+      res.status(STATUS_CODES.BAD_REQUEST).send({ message });
       return;
     }
   }
@@ -82,11 +80,11 @@ app.use(celebrateErrorHandler);
 app.use(errorHandler);
 
 // Подключение к MongoDB
-mongoose.connect('mongodb://localhost:27017/mestodb')
-  .then(() => systemLogger('Connected to MongoDB'))
+mongoose.connect(appConfig.mongoUri)
+  .then(() => systemLogger(`Connected to MongoDB at ${appConfig.mongoUri}`))
   .catch((err) => systemErrorLogger('MongoDB connection error', err));
 
 // Запуск сервера
-app.listen(PORT, () => {
-  systemLogger(`Server is running on http://localhost:${PORT}`);
+app.listen(appConfig.port, () => {
+  systemLogger(`Server is running on http://localhost:${appConfig.port}`);
 });
